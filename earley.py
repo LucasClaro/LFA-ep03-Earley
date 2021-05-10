@@ -122,7 +122,7 @@ def test2():
     }
     terminals = ['Numero', 'Mais']
 
-    earley = Earley(['1', '+', '2'], grammar, terminals)
+    earley = Earley(['1', '+'], grammar, terminals)
     earley.parse()
     print(earley)
 

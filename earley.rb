@@ -51,9 +51,9 @@ class Earley
     attr_accessor :chart, :current_id, :palavras, :gramatica, :terminals
 
     def initialize(palavras, gramatica, terminals)
-        @chart = Array.new(palavras.length() + 1){ [] }
+        @palavras = palavras.split(/\s*/)
+        @chart = Array.new(@palavras.length() + 1){ [] }
         @current_id = 0
-        @palavras = palavras
         @gramatica = gramatica
         @terminals = terminals
     end
@@ -77,24 +77,40 @@ class Earley
     end
 
     def predictor(estado)
+        puts "PREDICTOR"
+        puts estado.to_s
+        
         for regra in @gramatica[estado.proximo()]
-            self.enqueue(Estado.new(estado.proximo(), regra, 0, estado.end_index, estado.end_index, self.novoId(), [], "predictor"), estado.end_index)
+            teste = Estado.new(estado.proximo(), regra, 0, estado.end_index, estado.end_index, self.novoId(), [], "predictor")
+            puts teste.to_s
+            self.enqueue(teste, estado.end_index)
         end
+        puts
     end
 
     def scanner(estado)
+        puts "SCANNER"
+        puts estado.to_s
+
         if @gramatica[estado.proximo()].include? @palavras[estado.end_index]
             teste = Estado.new(estado.proximo(), [@palavras[estado.end_index]], 1, estado.end_index, (estado.end_index + 1), self.novoId(), [], "scanner")
+            puts teste
             self.enqueue(teste, (estado.end_index + 1))
         end
+        puts 
     end
 
     def completer(estado) 
+        puts "COMPLETER"
+        puts estado.to_s
         for e in @chart[estado.start_index]
-            if !e.completo? && e.proximo() == estado.label && e.end_index == estado.start_index && e.label != "gamma"
-                self.enqueue(Estado.new(e.label, e.rules, (e.dot_index + 1), e.start_index, estado.end_index, self.novoId(), (e.made_from + [estado.index]), "completer"), estado.end_index) 
+            if !e.completo? && e.proximo() == estado.label && e.end_index == estado.start_index && e.label != "gamma" && estado.completo?
+                teste = Estado.new(e.label, e.rules, (e.dot_index + 1), e.start_index, estado.end_index, self.novoId(), (e.made_from + [estado.index]), "completer")
+                puts teste
+                self.enqueue(teste, estado.end_index) 
             end
         end
+        puts
     end
 
     def parse
@@ -124,7 +140,7 @@ class Earley
 
         controle = false
         for e in @chart[@palavras.length()]
-            if e.label == "S" && e.start_index == 0
+            if e.label == "S" && e.start_index == 0 && e.completo?
                 controle = true
             end
         end
@@ -141,14 +157,65 @@ class Earley
 end
 
 
+# Legenda
+# S - Soma
+# D - Diferença
+# M - Multiplicação
+# R - Razão (Divisão)
+# E - Elevado (Power)
+# P - Parênteses
+# T - Termo
+# N - Número
+
+grammar = {    
+    'S' => [['D', 'Mais' ,'S'] , ['D']],
+    'D' => [['M', 'Menos' ,'D'] , ['M']],
+    'M' => [['R', 'Mult' ,'M'] , ['R']],
+    'R' => [['E', 'Razao' ,'R'] , ['E']],
+    'E' => [['T', 'Elevado' ,'E'] , ['T']],
+    'T' => [['Menos', 'T'] , ['P']],
+    'P' => [['AP', 'S', 'FP'] , ['N']],
+    'N' => [['N','Numero'] , ['Numero']],
+    
+    'Mais'    =>   ['+'],
+    'Menos'   =>   ['-'],
+    'Mult'    =>   ['*'],
+    'Razao'   =>   ['/'],
+    'Elevado' =>   ['^'],
+    'AP'      =>   ['('],
+    'FP'      =>   [')'],
+    
+    'Numero'  =>     ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+}
+terminals = ['Numero', 'Mais', 'Menos', 'Mult', 'Razao', 'Elevado', 'AP', 'FP']
+
+unitTests = [
+'(1+4)*2^4',
+'7/(1-3)',
+'9^(1*6/2+4)',
+'2+4^-4/4',
+
+'^2+4',
+'9*2+',
+'9++3',
+'()*3',
+'(3+3'
+]
+
+earley = Earley.new("1+ 1", grammar, terminals)
+earley.parse()
+print earley.to_s
+
 
 # grammar = {
-#     'S'       =>     [['Numero', 'Mais', 'S'], ['Numero']],
+#     'S'       =>     [['Numero', 'Mais', 'S'], ['Numero'], ['T']],
 #     'Mais'    =>     ['+'],
-#     'Numero'  =>     ['1', '2']
+#     'Numero'  =>     ['1', '2'],
+#     'T' => [['Menos', 'T'] , ['Numero']],
+#     'Menos'   =>   ['-']
 # }
-# terminals = ['Numero', 'Mais']
+# terminals = ['Numero', 'Mais', 'Menos']
 
-# earley = Earley.new(['1', '+', '2', '+', '2'], grammar, terminals)
+# earley = Earley.new(['-','-', '1'], grammar, terminals)
 # earley.parse()
 # print earley.to_s
